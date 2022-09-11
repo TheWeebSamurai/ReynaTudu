@@ -7,6 +7,7 @@ const { REST } = require('@discordjs/rest');
 const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
 const { Routes } = require('discord-api-types/v9');
 const { clientId, guildId, token, gld1 } = require('./config.json');
+const {Collection} = require('discord.js');
 const path = require('path')
 const fs = require('node:fs')
 
@@ -14,19 +15,19 @@ client.on('ready',() => {
   console.log('Logged in')
 })
 
+client.commands = new Collection();
+const commandPath = path.join(__dirname, 'commands')
+const commandFiles = fs.readdirSync(commandPath).filter(file => file.endsWith('.js'));
 
-const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-for (const file of commandFiles) {
-	const filePath = path.join(commandsPath, file);
-	const command = require(filePath);
-	commands.push(command.data.toJSON());
+for(const file of commandFiles){
+    const filePath = path.join(commandPath, file)
+    const command = require(filePath)
+    client.commands.set(command.data.name, command)
 }
 
 client.on('interactionCreate', async interaction => {
-	if (!interaction.isChatInputCommand()) return;
+	if (!interaction.isCommand()) return;
 
 	const command = interaction.client.commands.get(interaction.commandName);
 
@@ -34,6 +35,7 @@ client.on('interactionCreate', async interaction => {
 
 	try {
 		await command.execute(interaction);
+    let ping = client.ws.ping;
 	} catch (error) {
 		console.error(error);
 		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
@@ -55,6 +57,14 @@ client.on('messageCreate', async message=>{
 
   if(command === "test"){
     message.channel.send("Hello World")
+  }
+
+  if(command === "ping"){
+    message.channel.send(`🏓Latency is ${Date.now() - message.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`).then(async msg => {
+      setTimeout(() => {
+        msg.delete()
+      }, 5000);
+    })
   }
 })
 
